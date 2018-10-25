@@ -3,6 +3,11 @@ package utils
 import (
 	"fmt"
 	"os"
+	"golang.org/x/text/transform"
+	"bytes"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"io/ioutil"
+	"golang.org/x/net/html/charset"
 )
 
 func CheckError(err error) {
@@ -29,4 +34,24 @@ func RemoveDuplicates(elements []string) []string {
 	}
 	// Return the new slice.
 	return result
+}
+
+func GbkToUtf8(s []byte) ([]byte, error) {
+	reader := transform.NewReader(bytes.NewReader(s), simplifiedchinese.GBK.NewDecoder())
+	d, e := ioutil.ReadAll(reader)
+	if e != nil {
+		return nil, e
+	}
+	return d, nil
+}
+
+func DetectContentCharset(data []byte, header string) string {
+	encoder, _, _ := charset.DetermineEncoding(data, header)
+	//       ^
+	//       |
+	//fmt.Println(pageCharset)
+	utf8Reader := transform.NewReader(bytes.NewReader(data), encoder.NewDecoder())
+	realData, err := ioutil.ReadAll(utf8Reader)
+	CheckError(err)
+	return string(realData)
 }

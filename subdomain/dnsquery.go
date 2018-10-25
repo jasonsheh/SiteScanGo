@@ -1,12 +1,11 @@
 package subdomain
 
 import (
-	"time"
 	"../utils"
 	"github.com/miekg/dns"
-	"fmt"
-	"sync"
 	"strings"
+	"sync"
+	"time"
 )
 
 var (
@@ -34,29 +33,24 @@ func sendQuery() {
 			msg.SetQuestion(dns.Fqdn(prefix+"."+baseDomain), dns.TypeA)
 			conn.WriteMsg(msg)
 
-		case <-time.After(2 * time.Second):
-			fmt.Println("超时")
+		case <-time.After(3 * time.Second):
 			flag := true
 			retry.Range(func(key, value interface{}) bool {
 				if value.(int) < 3 {
 					retry.Store(key, value.(int)+1)
-					fmt.Println("retry", key.(string), value.(int))
-
 					flag = false
 					go func() { prefixList <- key.(string) }()
 				} else {
-					fmt.Println("超过重试次数删除", key.(string))
 					retry.Delete(key)
 				}
 				return true
 			})
 
 			if flag {
-				fmt.Println("close?")
 				conn.Close()
 				close(stop)
 				return
-			}else {
+			} else {
 				continue
 			}
 		}
@@ -64,9 +58,11 @@ func sendQuery() {
 }
 
 func receiveQuery(blackList map[string]string) {
-	var msg *dns.Msg
-	var err error
-	var temp subDomain
+	var (
+		msg   *dns.Msg
+		err   error
+		temp  subDomain
+	)
 	for {
 
 		select {
@@ -82,11 +78,10 @@ func receiveQuery(blackList map[string]string) {
 			continue
 		}
 
-		temp.domain, temp.ip = parseAnswer(msg.Answer)
+		temp.domain, temp.cname, temp.ip = parseAnswer(msg.Answer)
+		temp.domain = strings.Trim(temp.domain, ".")
 		prefix := strings.Split(temp.domain, ".")[0]
 		if len(temp.ip) == 0 {
-			fmt.Println("this is empty query", temp.domain)
-			retry.Delete(prefix)
 			continue
 		}
 
@@ -106,22 +101,30 @@ func receiveQuery(blackList map[string]string) {
 	}
 }
 
-func parseAnswer(answer []dns.RR) (string, []string) {
-	var resolvedIP []string
-	var domain string
+func parseAnswer(answer []dns.RR) (string, string, []string) {
+	var (
+		resolvedIP []string
+		domain     string
+		cname      string
+	)
 
 	for index, ans := range answer {
 		switch ans.Header().Rrtype {
 		case dns.TypeCNAME:
 			if index == 0 {
-				domain = ans.(*dns.CNAME).Target
+				domain = ans.(*dns.CNAME).Header().Name
 			}
 		case dns.TypeA:
-			domain = ans.Header().Name
-			resolvedIP = append(resolvedIP, ans.(*dns.A).A.String())
+			if index == 0{
+				domain = ans.(*dns.A).Header().Name
+				resolvedIP = append(resolvedIP, ans.(*dns.A).A.String())
+			}else{
+				cname = ans.(*dns.A).Header().Name
+				resolvedIP = append(resolvedIP, ans.(*dns.A).A.String())
+			}
 		}
 	}
-	return domain, resolvedIP
+	return domain, cname, resolvedIP
 }
 
 func SingleDNSQuery(dnsServer string, domain string) []string {
@@ -138,6 +141,7 @@ func SingleDNSQuery(dnsServer string, domain string) []string {
 	if msg, err = conn.ReadMsg(); err != nil {
 		return nil
 	}
-	_, ip := parseAnswer(msg.Answer)
+
+	_, _, ip := parseAnswer(msg.Answer)
 	return ip
 }

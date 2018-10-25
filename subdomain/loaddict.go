@@ -8,8 +8,8 @@ import (
 	"../utils"
 )
 
-func LoadDict(dictLocation string) []string {
-	dictFile, err := os.Open(dictLocation)
+func LoadDomain(domainLocation string) []string {
+	dictFile, err := os.Open(domainLocation)
 	utils.CheckError(err)
 	defer dictFile.Close()
 
