@@ -11,21 +11,20 @@ import (
 var (
 	conn    *dns.Conn
 	stop    = make(chan int)
-	results = make(chan subDomain)
 	retry   = sync.Map{}
 )
 
-func DNSQuery(dnsServer string, blackList map[string]string) {
+func DNSQuery(dnsServer string, blackList map[string]string, results chan subDomain, prefixList chan string) {
 	var err error
 	conn, err = dns.DialTimeout("udp", dnsServer+":53", time.Second)
 	utils.CheckError(err)
 
-	go sendQuery()
-	go receiveQuery(blackList)
+	go sendQuery(prefixList)
+	go receiveQuery(blackList, results, prefixList)
 
 }
 
-func sendQuery() {
+func sendQuery(prefixList chan string) {
 	for {
 		select {
 		case prefix := <-prefixList:
@@ -57,7 +56,7 @@ func sendQuery() {
 	}
 }
 
-func receiveQuery(blackList map[string]string) {
+func receiveQuery(blackList map[string]string, results chan subDomain, prefixList chan string) {
 	var (
 		msg   *dns.Msg
 		err   error
