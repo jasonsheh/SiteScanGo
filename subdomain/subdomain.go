@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"../utils"
 	"time"
-	"sync"
 )
 
 type subDomain struct {
@@ -65,7 +64,7 @@ func thirdSubDomain(allResults []subDomain) []subDomain {
 	return returnResults
 }
 
-func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption bool) {
+func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption bool, saveLocation string) {
 	baseDomain = domain
 	allResults := []subDomain{}
 	resultsChannel := make(chan subDomain)
@@ -85,7 +84,7 @@ func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption
 		if titleOption || thirdOption {
 			allResults = append(allResults, result)
 		}
-		if thirdOption {
+		if !titleOption {
 			fmt.Println(result.domain, result.cname, result.ip)
 		}
 		resultCount++
@@ -99,20 +98,8 @@ func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption
 
 	// 启用标题获取功能
 	if titleOption {
-		t = time.Now()
-		wg := sync.WaitGroup{}
-		for i := 0; i < 20; i++ {
-			go func() {
-				defer wg.Done()
-				wg.Add(1)
-				GetTitle()
-			}()
-		}
-		for _, result := range allResults {
-			//fmt.Println(index, result.domain)
-			title <- result
-		}
-		wg.Wait()
-		fmt.Println("title耗时: ", time.Since(t))
+		allResults = RunGetTitle(allResults)
 	}
+
+	SaveFile(saveLocation, allResults)
 }
