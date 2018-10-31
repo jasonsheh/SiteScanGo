@@ -23,7 +23,7 @@ func main() {
 	fmt.Println(`  \__ \/ / __/ _ \ \__\/ ___/ __  / __ \/ /_  / / / /`)
 	fmt.Println(` ___/ / / /_/  __/__/ / /__/ /_/ / / / / /_/ / /_/ /`)
 	fmt.Println(`/____/_/\__/\___/____/\___/\__,_/_/ /_/\____/\____/`)
-	programVersion := "0.2.2"
+	programVersion := "0.2.3"
 
 	if *version {
 		fmt.Println(programVersion)

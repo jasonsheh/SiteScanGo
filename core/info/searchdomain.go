@@ -17,7 +17,7 @@ type searchDomain struct {
 	searchReg       string
 }
 
-func (s searchDomain) searchSingleDomain(pageRange int) []string {
+func (s searchDomain) searchSingleDomain(pageRange int, baseDomain string) []string {
 	var prefix []string
 
 	for i := 0; i < pageRange; i++ {
@@ -41,17 +41,17 @@ func (s searchDomain) searchSingleDomain(pageRange int) []string {
 
 // 从搜索引擎等api中获取子域名
 // 加入爆破的字典中
-func searchSubDomain() []string {
+func searchSubDomain(baseDomain string) []string {
 	var prefixWithDot []string
 	var realPrefixList []string
 	pageRange := 10
 
 	baidu := searchDomain{"http://www.baidu.com/s?wd=site:.", "&pn=", 1, `<a.*?class="c-showurl".*?>(.*?)/&nbsp;</a>`}
-	prefixWithDot = append(prefixWithDot, baidu.searchSingleDomain(pageRange)...)
+	prefixWithDot = append(prefixWithDot, baidu.searchSingleDomain(pageRange, baseDomain)...)
 	so360 := searchDomain{"https://www.so.com/s?q=site:.", "&pn=", 1, `<cite>(.*?)</cite>`}
-	prefixWithDot = append(prefixWithDot, so360.searchSingleDomain(pageRange)...)
+	prefixWithDot = append(prefixWithDot, so360.searchSingleDomain(pageRange, baseDomain)...)
 	bing := searchDomain{"http://cn.bing.com/s?q=site:.", "&first=", 9, `>(.*?)<strong>`}
-	prefixWithDot = append(prefixWithDot, bing.searchSingleDomain(pageRange)...)
+	prefixWithDot = append(prefixWithDot, bing.searchSingleDomain(pageRange, baseDomain)...)
 
 	for _, realPrefix := range prefixWithDot {
 		realPrefixList = append(realPrefixList, strings.Split(realPrefix, ".")[0])

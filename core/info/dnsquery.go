@@ -10,26 +10,27 @@ import (
 
 var (
 	conn    *dns.Conn
-	stop    = make(chan int)
 	retry   = sync.Map{}
 )
 
-func DNSQuery(dnsServer string, blackList map[string]string, results chan SubDomainType, prefixList chan string) {
+func DNSQuery(baseDomain string, blackList map[string]string, results chan SubDomainType, prefixList chan string) {
 	var err error
-	conn, err = dns.DialTimeout("udp", dnsServer+":53", time.Second)
-	utils.CheckError(err)
+	stop := make(chan int)
 
-	go sendQuery(prefixList)
-	go receiveQuery(blackList, results, prefixList)
+	conn, err = dns.DialTimeout("udp", dnsServer[0]+":53", time.Second)
+	utils.CheckError(err)
+	go sendQuery(prefixList, baseDomain, stop)
+	go receiveQuery(blackList, results, prefixList, stop)
 
 }
 
-func sendQuery(prefixList chan string) {
+func sendQuery(prefixList chan string, baseDomain string, stop chan int) {
 	for {
 		select {
 		case prefix := <-prefixList:
 			msg := &dns.Msg{}
 			msg.SetQuestion(dns.Fqdn(prefix+"."+baseDomain), dns.TypeA)
+			//fmt.Println(prefix+"."+baseDomain)
 			conn.WriteMsg(msg)
 
 		case <-time.After(3 * time.Second):
@@ -56,7 +57,7 @@ func sendQuery(prefixList chan string) {
 	}
 }
 
-func receiveQuery(blackList map[string]string, results chan SubDomainType, prefixList chan string) {
+func receiveQuery(blackList map[string]string, results chan SubDomainType, prefixList chan string, stop chan int) {
 	var (
 		msg   *dns.Msg
 		err   error
