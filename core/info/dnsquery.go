@@ -1,7 +1,7 @@
-package subdomain
+package info
 
 import (
-	"../utils"
+	"../../utils"
 	"github.com/miekg/dns"
 	"strings"
 	"sync"
@@ -14,7 +14,7 @@ var (
 	retry   = sync.Map{}
 )
 
-func DNSQuery(dnsServer string, blackList map[string]string, results chan subDomain, prefixList chan string) {
+func DNSQuery(dnsServer string, blackList map[string]string, results chan SubDomainType, prefixList chan string) {
 	var err error
 	conn, err = dns.DialTimeout("udp", dnsServer+":53", time.Second)
 	utils.CheckError(err)
@@ -56,11 +56,11 @@ func sendQuery(prefixList chan string) {
 	}
 }
 
-func receiveQuery(blackList map[string]string, results chan subDomain, prefixList chan string) {
+func receiveQuery(blackList map[string]string, results chan SubDomainType, prefixList chan string) {
 	var (
 		msg   *dns.Msg
 		err   error
-		temp  subDomain
+		temp  SubDomainType
 	)
 	for {
 
@@ -77,16 +77,16 @@ func receiveQuery(blackList map[string]string, results chan subDomain, prefixLis
 			continue
 		}
 
-		temp.domain, temp.cname, temp.ip = parseAnswer(msg.Answer)
-		temp.domain = strings.Trim(temp.domain, ".")
-		prefix := strings.Split(temp.domain, ".")[0]
-		if len(temp.ip) == 0 {
+		temp.Domain, temp.Cname, temp.IP = parseAnswer(msg.Answer)
+		temp.Domain = strings.Trim(temp.Domain, ".")
+		prefix := strings.Split(temp.Domain, ".")[0]
+		if len(temp.IP) == 0 {
 			continue
 		}
 
 		flag := true
 		if len(blackList) > 0 {
-			for _, queryIP := range temp.ip {
+			for _, queryIP := range temp.IP {
 				if _, ok := blackList[queryIP]; ok {
 					flag = false
 					break

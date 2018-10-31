@@ -1,18 +1,20 @@
 package main
 
 import (
-	"./subdomain"
 	"flag"
 	"fmt"
+	"./core"
 )
 
 func main() {
-	domain := flag.String("domain", "baidu.com", "domain to brute")
-	save := flag.String("save", "./results/"+*domain+".csv", "where to save result")
+	domain := flag.String("domain", "baidu.com", "determine target ")
 	dictLocation := flag.String("dict", "./dict/domain.txt", "brute-dict location. default ./dict/domain.txt")
-	version := flag.Bool("version", false, "print program version")
+	subdomainOption := flag.Bool("sub", false, "brute subdomains of target")
 	titleOption := flag.Bool("title", false, "get website title (slow)")
-	thirdOption := flag.Bool("third", false, "get third-level subdomain (slow)")
+	thirdOption := flag.Bool("third", false, "get third-level info (slow)")
+	sensitiveDirectoryOption := flag.Bool("sendir", false, "brute sensitive directory of target")
+	version := flag.Bool("version", false, "print program version")
+
 
 	flag.Parse()
 
@@ -21,12 +23,12 @@ func main() {
 	fmt.Println(`  \__ \/ / __/ _ \ \__\/ ___/ __  / __ \/ /_  / / / /`)
 	fmt.Println(` ___/ / / /_/  __/__/ / /__/ /_/ / / / / /_/ / /_/ /`)
 	fmt.Println(`/____/_/\__/\___/____/\___/\__,_/_/ /_/\____/\____/`)
-	programVersion := "0.2.0"
+	programVersion := "0.2.2"
 
 	if *version {
 		fmt.Println(programVersion)
 		return
 	}
 
-	subdomain.SubDomain(*domain, *dictLocation, *titleOption, *thirdOption, *save)
+	core.Control(*domain, *dictLocation, *subdomainOption, *sensitiveDirectoryOption, *titleOption, *thirdOption)
 }

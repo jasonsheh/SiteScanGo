@@ -1,13 +1,13 @@
-package subdomain
+package info
 
 import (
 	"os"
 	"encoding/csv"
-	"../utils"
+	"../../utils"
 	"fmt"
 )
 
-func SaveFile(saveLocation string, data []subDomain) {
+func SaveFile(saveLocation string, data []SubDomainType) {
 	file, err := os.Create(saveLocation)//创建文件
 	utils.CheckError(err)
 	defer file.Close()
@@ -17,10 +17,10 @@ func SaveFile(saveLocation string, data []subDomain) {
 	records := [][]string{}
 	for _, result := range data {
 		temp := []string{
-			result.domain,
-			result.cname,
-			fmt.Sprintf("%s", result.ip) ,
-			result.title,
+			result.Domain,
+			result.Cname,
+			fmt.Sprintf("%s", result.IP) ,
+			result.Title,
 		}
 		records = append(records, temp)
 

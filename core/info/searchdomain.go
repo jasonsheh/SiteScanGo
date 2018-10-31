@@ -1,4 +1,4 @@
-package subdomain
+package info
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"../utils"
+	"../../utils"
 )
 
 type searchDomain struct {

@@ -1,16 +1,16 @@
-package subdomain
+package info
 
 import (
 	"fmt"
-	"../utils"
+	"../../utils"
 	"time"
 )
 
-type subDomain struct {
-	domain string
-	cname  string
-	ip     []string
-	title  string
+type SubDomainType struct {
+	Domain string
+	Cname  string
+	IP     []string
+	Title  string
 }
 
 //获得泛解析域名ip
@@ -29,11 +29,11 @@ var (
 	baseDomain string
 	dnsServer  = []string{"223.5.5.5", "223.6.6.6", "119.29.29.29", "119.28.28.28"}
 	blackList  map[string]string
-	title      = make(chan subDomain, 10)
+	title      = make(chan SubDomainType, 10)
 )
 
 func mergeDict(dictLocation string, searchDomain []string, prefixList chan string) {
-	dict := LoadDomain(dictLocation)
+	dict := utils.LoadDict(dictLocation)
 	dict = append(dict, searchDomain...)
 	dict = utils.RemoveDuplicates(dict)
 	go func() {
@@ -44,30 +44,30 @@ func mergeDict(dictLocation string, searchDomain []string, prefixList chan strin
 	}()
 }
 
-func thirdSubDomain(allResults []subDomain) []subDomain {
+func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 	returnResults := allResults
-	dict := LoadDomain("./dict/sub_domain.txt")
+	dict := utils.LoadDict("./dict/sub_domain.txt")
 	for _, result := range allResults {
-		resultsChannel := make(chan subDomain)
+		resultsChannel := make(chan SubDomainType)
 		prefixList := make(chan string)
 		for _, prefix := range dict {
 			retry.Store(prefix, 1)
-			baseDomain = result.domain
+			baseDomain = result.Domain
 			DNSQuery(dnsServer[0], blackList, resultsChannel, prefixList)
 
 			for result := range resultsChannel {
 				returnResults = append(returnResults, result)
-				fmt.Println(result.domain, result.cname, result.ip)
+				fmt.Println(result.Domain, result.Cname, result.IP)
 			}
 		}
 	}
 	return returnResults
 }
 
-func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption bool, saveLocation string) {
+func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption bool) []SubDomainType {
 	baseDomain = domain
-	allResults := []subDomain{}
-	resultsChannel := make(chan subDomain)
+	allResults := []SubDomainType{}
+	resultsChannel := make(chan SubDomainType)
 	prefixList := make(chan string)
 
 	t := time.Now()
@@ -85,7 +85,7 @@ func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption
 			allResults = append(allResults, result)
 		}
 		if !titleOption {
-			fmt.Println(result.domain, result.cname, result.ip)
+			fmt.Println(result.Domain, result.Cname, result.IP)
 		}
 		resultCount++
 	}
@@ -95,11 +95,5 @@ func SubDomain(domain string, dictLocation string, titleOption bool, thirdOption
 		t = time.Now()
 		allResults = thirdSubDomain(allResults)
 	}
-
-	// 启用标题获取功能
-	if titleOption {
-		allResults = RunGetTitle(allResults)
-	}
-
-	SaveFile(saveLocation, allResults)
+	return allResults
 }

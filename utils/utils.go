@@ -8,6 +8,7 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"io/ioutil"
 	"golang.org/x/net/html/charset"
+	"strings"
 )
 
 func CheckError(err error) {
@@ -54,4 +55,16 @@ func DetectContentCharset(data []byte, header string) string {
 	realData, err := ioutil.ReadAll(utf8Reader)
 	CheckError(err)
 	return string(realData)
+}
+
+func LoadDict(DictLocation string) []string {
+	dictFile, err := os.Open(DictLocation)
+	CheckError(err)
+	defer dictFile.Close()
+
+	allDictBytes, err := ioutil.ReadAll(dictFile)
+	CheckError(err)
+
+	allDictString := fmt.Sprintf("%s", allDictBytes)
+	return strings.Split(allDictString, "\r\n")
 }

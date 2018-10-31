@@ -1,19 +1,20 @@
 ## SiteScanGo
 
-### another subdomain brute tool written in Go
+### not only a subdomain brute tool written in Go 
 
-### Go编写的子域名枚举工具
+### Go编写的不只是子域名枚举的工具
 ---
 ```
-Usage of C:\Users\30393\AppData\Local\Temp\___2588go_build_main_go.exe:
   -dict string
-    	brute-dict location. (default "./dict/domain.txt")
+    	brute-dict location. default ./dict/domain.txt (default "./dict/domain.txt")
   -domain string
-    	domain to brute (default "baidu.com")
-  -save string
-    	where to save results (default "./baidu.com.csv")
+    	determine target  (default "baidu.com")
+  -sendir
+    	brute sensitive directory of target
+  -sub
+    	brute subdomains of target
   -third
-    	get third-level subdomain (slow)
+    	get third-level info (slow)
   -title
     	get website title (slow)
   -version
@@ -27,3 +28,5 @@ TODO
 - [ ] more search api
 - [x] 结果导出csv
 - [x] 多级子域名
+- [x] 敏感目录扫描
+- [ ] web界面(probably not)
