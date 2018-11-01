@@ -13,25 +13,27 @@ var (
 	retry   = sync.Map{}
 )
 
-func DNSQuery(baseDomain string, blackList map[string]string, results chan SubDomainType, prefixList chan string) {
+func DNSQuery(domainList chan string, blackList map[string]string, results chan SubDomainType) {
 	var err error
 	stop := make(chan int)
 
 	conn, err = dns.DialTimeout("udp", dnsServer[0]+":53", time.Second)
 	utils.CheckError(err)
-	go sendQuery(prefixList, baseDomain, stop)
-	go receiveQuery(blackList, results, prefixList, stop)
+	go sendQuery(domainList, stop)
+	go receiveQuery(blackList, results, stop)
 
 }
 
-func sendQuery(prefixList chan string, baseDomain string, stop chan int) {
+func sendQuery(domainList chan string, stop chan int) {
 	for {
 		select {
-		case prefix := <-prefixList:
+		// prefix+"."+baseDomain
+		case domain := <-domainList:
 			msg := &dns.Msg{}
-			msg.SetQuestion(dns.Fqdn(prefix+"."+baseDomain), dns.TypeA)
-			//fmt.Println(prefix+"."+baseDomain)
+			msg.SetQuestion(dns.Fqdn(domain), dns.TypeA)
+			//fmt.Println(domain)
 			conn.WriteMsg(msg)
+
 
 		case <-time.After(3 * time.Second):
 			flag := true
@@ -39,7 +41,7 @@ func sendQuery(prefixList chan string, baseDomain string, stop chan int) {
 				if value.(int) < 3 {
 					retry.Store(key, value.(int)+1)
 					flag = false
-					go func() { prefixList <- key.(string) }()
+					go func() { domainList <- key.(string) }()
 				} else {
 					retry.Delete(key)
 				}
@@ -49,6 +51,7 @@ func sendQuery(prefixList chan string, baseDomain string, stop chan int) {
 			if flag {
 				conn.Close()
 				close(stop)
+				close(domainList)
 				return
 			} else {
 				continue
@@ -57,7 +60,7 @@ func sendQuery(prefixList chan string, baseDomain string, stop chan int) {
 	}
 }
 
-func receiveQuery(blackList map[string]string, results chan SubDomainType, prefixList chan string, stop chan int) {
+func receiveQuery(blackList map[string]string, results chan SubDomainType, stop chan int) {
 	var (
 		msg   *dns.Msg
 		err   error
@@ -67,7 +70,6 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, prefi
 
 		select {
 		case <-stop:
-			close(prefixList)
 			close(results)
 			return
 		default:
@@ -80,7 +82,6 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, prefi
 
 		temp.Domain, temp.Cname, temp.IP = parseAnswer(msg.Answer)
 		temp.Domain = strings.Trim(temp.Domain, ".")
-		prefix := strings.Split(temp.Domain, ".")[0]
 		if len(temp.IP) == 0 {
 			continue
 		}
@@ -96,7 +97,7 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, prefi
 		}
 		if flag {
 			results <- temp
-			retry.Delete(prefix)
+			retry.Delete(temp.Domain)
 		}
 	}
 }

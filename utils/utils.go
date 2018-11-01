@@ -68,3 +68,7 @@ func LoadDict(DictLocation string) []string {
 	allDictString := fmt.Sprintf("%s", allDictBytes)
 	return strings.Split(allDictString, "\r\n")
 }
+
+func ProgressBar(currentCount int, Total int) {
+	fmt.Printf("%d / %d \r", currentCount, Total)
+}

@@ -13,8 +13,15 @@ type SubDomainType struct {
 	Title  string
 }
 
+var (
+	dnsServer = []string{"223.6.6.6", "223.5.5.5", "119.29.29.29", "119.28.28.28"}
+	blackList map[string]string
+	title     = make(chan SubDomainType, 10)
+	//totalDict  int
+)
+
 //获得泛解析域名ip
-func queryErrorDomainIP(baseDomain string) {
+func queryErrorDomainIP(baseDomain string) bool {
 	errorPrefix := "this_sub_domain_will_never_exists"
 	tencentIPResult := SingleDNSQuery("119.29.29.29", errorPrefix+"."+baseDomain)
 	aliIPResult := SingleDNSQuery("223.5.5.5", errorPrefix+"."+baseDomain)
@@ -22,23 +29,20 @@ func queryErrorDomainIP(baseDomain string) {
 		for _, blackIP := range tencentIPResult {
 			blackList = map[string]string{blackIP: errorPrefix}
 		}
+		return true
 	}
+	return false
 }
 
-var (
-	dnsServer  = []string{"223.5.5.5", "223.6.6.6", "119.29.29.29", "119.28.28.28"}
-	blackList  map[string]string
-	title      = make(chan SubDomainType, 10)
-)
-
-func mergeDict(dictLocation string, searchDomain []string, prefixList chan string) {
+func mergeDict(dictLocation string, searchDomain []string, domainList chan string, baseDomain string) {
 	dict := utils.LoadDict(dictLocation)
 	dict = append(dict, searchDomain...)
 	dict = utils.RemoveDuplicates(dict)
+	//totalDict = len(dict)
 	go func() {
 		for _, prefix := range dict {
-			retry.Store(prefix, 1)
-			prefixList <- prefix
+			retry.Store(prefix+"."+baseDomain, 1)
+			domainList <- prefix+"."+baseDomain
 		}
 	}()
 }
@@ -46,57 +50,69 @@ func mergeDict(dictLocation string, searchDomain []string, prefixList chan strin
 func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 	returnResults := allResults
 	dict := utils.LoadDict("./dict/sub_domain.txt")
-	for _, result := range allResults {
-		resultsChannel := make(chan SubDomainType)
-		thirdPrefixList := make(chan string, 10)
-		go func() {
-			for _, prefix := range dict {
-				retry.Store(prefix, 1)
-				thirdPrefixList <- prefix
+
+	resultsChannel := make(chan SubDomainType)
+	thirdDomainList := make(chan string, 20)
+
+	//fmt.Println(index, len(allResults))
+	//utils.ProgressBar(index, len(allResults))
+	go func() {
+		for index, result := range allResults {
+			fmt.Printf("\r# 域名剩余数量 %d / %d",index+1, len(allResults))
+
+			if queryErrorDomainIP(result.Domain) {
+				continue
 			}
-		}()
-		queryErrorDomainIP(result.Domain)
-		DNSQuery(result.Domain, blackList, resultsChannel, thirdPrefixList)
-		for thirdResult := range resultsChannel {
-			returnResults = append(returnResults, thirdResult)
-			fmt.Println(thirdResult.Domain, thirdResult.Cname, thirdResult.IP)
+			for _, prefix := range dict {
+				retry.Store(prefix+"."+result.Domain, 1)
+				thirdDomainList <- prefix + "." + result.Domain
+			}
+		}
+	}()
+
+	DNSQuery(thirdDomainList, blackList, resultsChannel)
+
+	for thirdResult := range resultsChannel {
+		returnResults = append(returnResults, thirdResult)
+		fmt.Println("\r", thirdResult.Domain, thirdResult.Cname, thirdResult.IP)
+	}
+
+	return returnResults
+}
+
+func subDomainBrute(baseDomain string, domainList chan string, titleOption bool) []SubDomainType {
+	resultsChannel := make(chan SubDomainType)
+	allResults := []SubDomainType{}
+
+	queryErrorDomainIP(baseDomain)
+	DNSQuery(domainList, blackList, resultsChannel)
+
+	for result := range resultsChannel {
+		allResults = append(allResults, result)
+		if !titleOption {
+			fmt.Println(result.Domain, result.Cname, result.IP)
 		}
 	}
-	return returnResults
+	return allResults
 }
 
 func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption bool) []SubDomainType {
 	baseDomain := domain
-	allResults := []SubDomainType{}
-	resultsChannel := make(chan SubDomainType)
-	prefixList := make(chan string)
+	domainList := make(chan string)
 
 	t := time.Now()
 	searchDomain := searchSubDomain(baseDomain)
 	fmt.Println("search耗时: ", time.Since(t))
 
 	t = time.Now()
-	mergeDict(dictLocation, searchDomain, prefixList)
-	queryErrorDomainIP(baseDomain)
-	DNSQuery(baseDomain, blackList, resultsChannel, prefixList)
-	resultCount := 0
-
-	for result := range resultsChannel {
-		if titleOption || thirdOption {
-			allResults = append(allResults, result)
-		}
-		if !titleOption {
-			fmt.Println(result.Domain, result.Cname, result.IP)
-		}
-		resultCount++
-	}
-	fmt.Println("brute耗时: ", time.Since(t), "子域名数量:", resultCount)
+	mergeDict(dictLocation, searchDomain, domainList, baseDomain)
+	allResults := subDomainBrute(baseDomain, domainList, titleOption)
+	fmt.Println("brute耗时: ", time.Since(t), "子域名数量:", len(allResults))
 
 	if thirdOption {
 		t = time.Now()
 		allResults = thirdSubDomain(allResults)
-		fmt.Println("thrid耗时: ", time.Since(t))
-
+		fmt.Println("\nthrid耗时: ", time.Since(t))
 	}
 	return allResults
 }
