@@ -4,13 +4,11 @@ import (
 	"../../utils"
 	"github.com/miekg/dns"
 	"strings"
-	"sync"
 	"time"
 )
 
 var (
-	conn    *dns.Conn
-	retry   = sync.Map{}
+	conn  *dns.Conn
 )
 
 func DNSQuery(domainList chan string, blackList map[string]string, results chan SubDomainType) {
@@ -31,45 +29,30 @@ func sendQuery(domainList chan string, stop chan int) {
 		case domain := <-domainList:
 			msg := &dns.Msg{}
 			msg.SetQuestion(dns.Fqdn(domain), dns.TypeA)
-			//fmt.Println(domain)
 			conn.WriteMsg(msg)
 
+			time.Sleep(time.Millisecond)
 
-		case <-time.After(3 * time.Second):
-			flag := true
-			retry.Range(func(key, value interface{}) bool {
-				if value.(int) < 3 {
-					retry.Store(key, value.(int)+1)
-					flag = false
-					go func() { domainList <- key.(string) }()
-				} else {
-					retry.Delete(key)
-				}
-				return true
-			})
-
-			if flag {
-				conn.Close()
-				close(stop)
-				close(domainList)
-				return
-			} else {
-				continue
-			}
+		case <- time.After(3 * time.Second):
+			conn.Close()
+			stop <- 1
+			close(domainList)
+			return
 		}
 	}
 }
 
 func receiveQuery(blackList map[string]string, results chan SubDomainType, stop chan int) {
 	var (
-		msg   *dns.Msg
-		err   error
-		temp  SubDomainType
+		msg  *dns.Msg
+		err  error
+		temp SubDomainType
 	)
-	for {
 
+	for {
 		select {
 		case <-stop:
+			close(stop)
 			close(results)
 			return
 		default:
@@ -97,7 +80,6 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, stop 
 		}
 		if flag {
 			results <- temp
-			retry.Delete(temp.Domain)
 		}
 	}
 }
@@ -116,10 +98,10 @@ func parseAnswer(answer []dns.RR) (string, string, []string) {
 				domain = ans.(*dns.CNAME).Header().Name
 			}
 		case dns.TypeA:
-			if index == 0{
+			if index == 0 {
 				domain = ans.(*dns.A).Header().Name
 				resolvedIP = append(resolvedIP, ans.(*dns.A).A.String())
-			}else{
+			} else {
 				cname = ans.(*dns.A).Header().Name
 				resolvedIP = append(resolvedIP, ans.(*dns.A).A.String())
 			}

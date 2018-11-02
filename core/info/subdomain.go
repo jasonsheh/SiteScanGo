@@ -38,10 +38,10 @@ func mergeDict(dictLocation string, searchDomain []string, domainList chan strin
 	dict := utils.LoadDict(dictLocation)
 	dict = append(dict, searchDomain...)
 	dict = utils.RemoveDuplicates(dict)
+
 	//totalDict = len(dict)
 	go func() {
 		for _, prefix := range dict {
-			retry.Store(prefix+"."+baseDomain, 1)
 			domainList <- prefix+"."+baseDomain
 		}
 	}()
@@ -64,7 +64,6 @@ func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 				continue
 			}
 			for _, prefix := range dict {
-				retry.Store(prefix+"."+result.Domain, 1)
 				thirdDomainList <- prefix + "." + result.Domain
 			}
 		}
