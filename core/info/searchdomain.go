@@ -1,13 +1,13 @@
 package info
 
 import (
-	"net/http"
-	"strconv"
-	"io/ioutil"
-	"fmt"
-	"regexp"
-	"strings"
 	"../../utils"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type searchDomain struct {
@@ -59,3 +59,19 @@ func searchSubDomain(baseDomain string) []string {
 	return realPrefixList
 }
 
+func apiSubDomain(baseDomain string) []string {
+	var apiPrefixList []string
+
+	resp, err := http.Get("http://api.hackertarget.com/hostsearch/?q=" + baseDomain)
+	utils.CheckError(err)
+	body, err := ioutil.ReadAll(resp.Body)
+	utils.CheckError(err)
+	resp.Body.Close()
+	bodyString := fmt.Sprintf("%s", body)
+	bodyList := strings.SplitN(bodyString, "\n", -1)
+	for _, eachLine := range bodyList {
+		prefix := strings.Split(eachLine, "."+baseDomain)[0]
+		apiPrefixList = append(apiPrefixList, prefix)
+	}
+	return apiPrefixList
+}

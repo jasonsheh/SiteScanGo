@@ -2,13 +2,12 @@ package core
 
 import (
 	"./info"
-	"time"
 	"fmt"
+	"time"
 )
 
-
-func Control(domain string, dictLocation string, subDomainOption bool, sensitiveDirectoryOption bool, titleOption bool, thirdOption bool){
-	allResults := []info.SubDomainType{}
+func Control(domain string, dictLocation string, subDomainOption bool, sensitiveDirectoryOption bool, titleOption bool, thirdOption bool) {
+	var allResults []info.SubDomainType
 
 	if subDomainOption {
 		allResults = info.SubDomain(domain, dictLocation, thirdOption, titleOption)
@@ -30,7 +29,7 @@ func Control(domain string, dictLocation string, subDomainOption bool, sensitive
 			info.SensetiveDirectory(resultTemp.Domain)
 		}
 
-	// 对一个网站扫描 -sen
+		// 对一个网站扫描 -sen
 	} else if sensitiveDirectoryOption {
 		info.SensetiveDirectory(domain)
 	}

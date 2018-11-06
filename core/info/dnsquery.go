@@ -8,12 +8,15 @@ import (
 )
 
 var (
-	conn  *dns.Conn
+	conn         *dns.Conn
+	resetTimeOut chan int
 )
+
 
 func DNSQuery(domainList chan string, blackList map[string]string, results chan SubDomainType) {
 	var err error
 	stop := make(chan int)
+	resetTimeOut = make(chan int, 5)
 
 	conn, err = dns.DialTimeout("udp", dnsServer[0]+":53", time.Second)
 	utils.CheckError(err)
@@ -30,10 +33,10 @@ func sendQuery(domainList chan string, stop chan int) {
 			msg := &dns.Msg{}
 			msg.SetQuestion(dns.Fqdn(domain), dns.TypeA)
 			conn.WriteMsg(msg)
-
-			time.Sleep(time.Millisecond)
-
-		case <- time.After(3 * time.Second):
+			time.Sleep(20*time.Microsecond)
+		case <-resetTimeOut:
+			// 接收到结果，重置超时器
+		case <-time.After(3 * time.Second):
 			conn.Close()
 			stop <- 1
 			close(domainList)
@@ -66,6 +69,7 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, stop 
 		temp.Domain, temp.Cname, temp.IP = parseAnswer(msg.Answer)
 		temp.Domain = strings.Trim(temp.Domain, ".")
 		if len(temp.IP) == 0 {
+			resetTimeOut <- 1
 			continue
 		}
 
@@ -79,6 +83,7 @@ func receiveQuery(blackList map[string]string, results chan SubDomainType, stop 
 			}
 		}
 		if flag {
+			resetTimeOut <- 1
 			results <- temp
 		}
 	}

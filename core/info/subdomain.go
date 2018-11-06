@@ -1,8 +1,8 @@
 package info
 
 import (
-	"fmt"
 	"../../utils"
+	"fmt"
 	"time"
 )
 
@@ -14,7 +14,7 @@ type SubDomainType struct {
 }
 
 var (
-	dnsServer = []string{"223.6.6.6", "223.5.5.5", "119.29.29.29", "119.28.28.28"}
+	dnsServer = []string{"119.29.29.29", "223.6.6.6", "223.5.5.5", "119.28.28.28"}
 	blackList map[string]string
 	title     = make(chan SubDomainType, 10)
 	//totalDict  int
@@ -42,7 +42,7 @@ func mergeDict(dictLocation string, searchDomain []string, domainList chan strin
 	//totalDict = len(dict)
 	go func() {
 		for _, prefix := range dict {
-			domainList <- prefix+"."+baseDomain
+			domainList <- prefix + "." + baseDomain
 		}
 	}()
 }
@@ -58,7 +58,7 @@ func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 	//utils.ProgressBar(index, len(allResults))
 	go func() {
 		for index, result := range allResults {
-			fmt.Printf("\r# 域名剩余数量 %d / %d",index+1, len(allResults))
+			fmt.Printf("\r# 域名剩余数量 %d / %d", index+1, len(allResults))
 
 			if queryErrorDomainIP(result.Domain) {
 				continue
@@ -80,8 +80,8 @@ func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 }
 
 func subDomainBrute(baseDomain string, domainList chan string, titleOption bool) []SubDomainType {
+	var allResults []SubDomainType
 	resultsChannel := make(chan SubDomainType)
-	allResults := []SubDomainType{}
 
 	queryErrorDomainIP(baseDomain)
 	DNSQuery(domainList, blackList, resultsChannel)
@@ -101,6 +101,7 @@ func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption
 
 	t := time.Now()
 	searchDomain := searchSubDomain(baseDomain)
+	searchDomain = append(searchDomain, apiSubDomain(baseDomain)...)
 	fmt.Println("search耗时: ", time.Since(t))
 
 	t = time.Now()
@@ -111,7 +112,7 @@ func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption
 	if thirdOption {
 		t = time.Now()
 		allResults = thirdSubDomain(allResults)
-		fmt.Println("\nthrid耗时: ", time.Since(t))
+		fmt.Println("\n third 耗时: ", time.Since(t))
 	}
 	return allResults
 }
