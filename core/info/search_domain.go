@@ -2,7 +2,6 @@ package info
 
 import (
 	"../../utils"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -26,7 +25,7 @@ func (s searchDomain) searchSingleDomain(pageRange int, baseDomain string) []str
 		body, err := ioutil.ReadAll(resp.Body)
 		utils.CheckError(err)
 		resp.Body.Close()
-		bodyString := fmt.Sprintf("%s", body)
+		bodyString := string(body)
 
 		pattern, err := regexp.Compile(s.searchReg)
 		utils.CheckError(err)
@@ -67,7 +66,7 @@ func apiSubDomain(baseDomain string) []string {
 	body, err := ioutil.ReadAll(resp.Body)
 	utils.CheckError(err)
 	resp.Body.Close()
-	bodyString := fmt.Sprintf("%s", body)
+	bodyString := string(body)
 	bodyList := strings.SplitN(bodyString, "\n", -1)
 	for _, eachLine := range bodyList {
 		prefix := strings.Split(eachLine, "."+baseDomain)[0]

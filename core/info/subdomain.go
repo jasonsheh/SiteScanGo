@@ -90,11 +90,13 @@ func subDomainBrute(baseDomain string, domainList chan string, titleOption bool)
 		if !titleOption {
 			fmt.Println(result.Domain, result.Cname, result.IP)
 		}
+
+
 	}
 	return allResults
 }
 
-func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption bool) []SubDomainType {
+func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption bool, portOption bool) []SubDomainType {
 	baseDomain := domain
 	domainList := make(chan string)
 

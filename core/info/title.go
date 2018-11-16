@@ -33,10 +33,13 @@ func RunGetTitle(allResults []SubDomainType) []SubDomainType {
 func getTitle() {
 	pattern, err := regexp.Compile("<title ?>(?ms)(.*?)</title ?>")
 	utils.CheckError(err)
+	client := http.Client{
+		Timeout: time.Duration(5 * time.Second),
+	}
 	for {
 		select {
 		case result := <-title:
-			resp, err := http.Get("http://" + result.Domain)
+			resp, err := client.Get("http://" + result.Domain)
 			if err != nil {
 				fmt.Println(result.Domain, result.Cname, result.IP)
 				continue

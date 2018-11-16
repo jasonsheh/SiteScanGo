@@ -1,20 +1,27 @@
 package main
 
 import (
+	"./core"
 	"flag"
 	"fmt"
-	"./core"
 )
 
 func main() {
-	domain := flag.String("domain", "baidu.com", "determine target ")
-	dictLocation := flag.String("dict", "./dict/domain.txt", "brute-dict location. default ./dict/domain.txt")
-	subdomainOption := flag.Bool("sub", false, "brute subdomains of target")
-	titleOption := flag.Bool("title", false, "get website title (slow)")
-	thirdOption := flag.Bool("third", false, "get third-level info (slow)")
-	sensitiveDirectoryOption := flag.Bool("sendir", false, "brute sensitive directory of target")
-	version := flag.Bool("version", false, "print program version")
+	var infoOpt core.InfoOption
+	target := flag.String("target", "baidu.com", "determine target ")
 
+	infoOpt.DictLocation = *flag.String("dict", "./dict/domain.txt", "brute-dict location. default ./dict/domain.txt")
+	infoOpt.SubDomainOption = *flag.Bool("sub", false, "brute subdomains of target")
+	infoOpt.TitleOption = *flag.Bool("title", false, "get website title (slow)")
+	infoOpt.ThirdOption = *flag.Bool("third", false, "get third-level info (slow)")
+	infoOpt.PortOption = *flag.Bool("port", false, "get ip open port only work with sub domain brute otherwise use nmap or masscan")
+	infoOpt.SensitiveDirectoryOption = *flag.Bool("dir", false, "brute sensitive directory of target")
+
+	sqliOption := flag.Bool("sqli", false, "test sql injection")
+	xssOption := flag.Bool("xss", false, "test xss injection")
+	crawlOption := flag.Bool("crawl", false, "crawler one site")
+
+	version := flag.Bool("version", false, "print program version")
 
 	flag.Parse()
 
@@ -30,5 +37,11 @@ func main() {
 		return
 	}
 
-	core.Control(*domain, *dictLocation, *subdomainOption, *sensitiveDirectoryOption, *titleOption, *thirdOption)
+	if *sqliOption || *xssOption || *crawlOption {
+		core.ControlVuln(*target, *sqliOption, *xssOption, *crawlOption)
+	}
+
+	if infoOpt.SubDomainOption || infoOpt.SensitiveDirectoryOption || infoOpt.TitleOption {
+		core.ControlInfo(*target, infoOpt)
+	}
 }
