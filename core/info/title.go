@@ -1,19 +1,16 @@
 package info
 
 import (
-	"regexp"
-	"net/http"
 	"../../utils"
 	"io/ioutil"
-	"fmt"
+	"net/http"
+	"regexp"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
-var allResultsWithTitle []SubDomainType
-
-func RunGetTitle(allResults []SubDomainType) []SubDomainType {
+func RunGetTitle() {
 	wg := sync.WaitGroup{}
 	for i := 0; i < 20; i++ {
 		go func() {
@@ -22,43 +19,48 @@ func RunGetTitle(allResults []SubDomainType) []SubDomainType {
 			getTitle()
 		}()
 	}
-	for _, result := range allResults {
-		//fmt.Println(index, result.Domain)
-		title <- result
-	}
 	wg.Wait()
-	return allResultsWithTitle
+	close(titleResults)
 }
 
 func getTitle() {
 	pattern, err := regexp.Compile("<title ?>(?ms)(.*?)</title ?>")
 	utils.CheckError(err)
 	client := http.Client{
-		Timeout: time.Duration(5 * time.Second),
+		Timeout: time.Duration(3 * time.Second),
 	}
 	for {
 		select {
-		case result := <-title:
-			resp, err := client.Get("http://" + result.Domain)
-			if err != nil {
-				fmt.Println(result.Domain, result.Cname, result.IP)
-				continue
+		case result := <-domainResults:
+			if result.Domain == "" {
+				return
 			}
 
+			var pageTitle string
+			resp, err := client.Get("http://" + result.Domain)
+			if err != nil {
+				result.Title = ""
+				titleResults <- result
+				continue
+			}
 			body, err := ioutil.ReadAll(resp.Body)
-			utils.CheckError(err)
-
+			if err != nil {
+				result.Title = ""
+				titleResults <- result
+				continue
+			}
 			bodyString := utils.DetectContentCharset(body, resp.Header.Get("content-type"))
 			resp.Body.Close()
 
 			domainTitle := pattern.FindAllStringSubmatch(bodyString, -1)
 			if len(domainTitle) == 0 {
-				result.Title = ""
+				pageTitle = ""
 			} else {
-				result.Title = strings.Trim(domainTitle[0][1], "\r\n\t")
+				pageTitle = strings.Trim(domainTitle[0][1], "\r\n\t")
 			}
-			allResultsWithTitle = append(allResultsWithTitle, result)
-			fmt.Println(result.Domain, result.Cname, result.IP, result.Title)
+
+			result.Title = pageTitle
+			titleResults <- result
 
 		case <-time.After(3 * time.Second):
 			return

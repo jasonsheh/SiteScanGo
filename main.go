@@ -1,21 +1,21 @@
 package main
 
 import (
-	"./core"
+	"./core/info"
+	"./core/vuln"
 	"flag"
 	"fmt"
 )
 
 func main() {
-	var infoOpt core.InfoOption
 	target := flag.String("target", "baidu.com", "determine target ")
 
-	infoOpt.DictLocation = *flag.String("dict", "./dict/domain.txt", "brute-dict location. default ./dict/domain.txt")
-	infoOpt.SubDomainOption = *flag.Bool("sub", false, "brute subdomains of target")
-	infoOpt.TitleOption = *flag.Bool("title", false, "get website title (slow)")
-	infoOpt.ThirdOption = *flag.Bool("third", false, "get third-level info (slow)")
-	infoOpt.PortOption = *flag.Bool("port", false, "get ip open port only work with sub domain brute otherwise use nmap or masscan")
-	infoOpt.SensitiveDirectoryOption = *flag.Bool("dir", false, "brute sensitive directory of target")
+	DictLocation := flag.String("dict", "./dict/domain.txt", "brute-dict location. default ./dict/domain.txt")
+	IsSubDomain := flag.Bool("sub", false, "brute subdomains of target")
+	IsTitle := flag.Bool("title", false, "get website title (slow)")
+	IsThird := flag.Bool("third", false, "get third-level info (slow)")
+	IsPort := flag.Bool("port", false, "get ip open port only work with sub domain brute otherwIse use nmap or masscan")
+	IsDirectory := flag.Bool("dir", false, "brute sensitive directory of target")
 
 	sqliOption := flag.Bool("sqli", false, "test sql injection")
 	xssOption := flag.Bool("xss", false, "test xss injection")
@@ -25,12 +25,21 @@ func main() {
 
 	flag.Parse()
 
+	infoOpt := info.OptionInfo{
+		DictLocation: *DictLocation,
+		IsSubDomain: *IsSubDomain,
+		IsTitle: *IsTitle,
+		IsThird: *IsThird,
+		IsPort: *IsPort,
+		IsDirectory: *IsDirectory,
+	}
+
 	fmt.Println(`   _____ _ __       _____                 __________ `)
 	fmt.Println(`  / ___/(_) /_ __  / ___/_________ ____  / ____/ __ \`)
 	fmt.Println(`  \__ \/ / __/ _ \ \__\/ ___/ __  / __ \/ /_  / / / /`)
 	fmt.Println(` ___/ / / /_/  __/__/ / /__/ /_/ / / / / /_/ / /_/ /`)
 	fmt.Println(`/____/_/\__/\___/____/\___/\__,_/_/ /_/\____/\____/`)
-	programVersion := "0.2.3"
+	programVersion := "0.3.0"
 
 	if *version {
 		fmt.Println(programVersion)
@@ -38,10 +47,10 @@ func main() {
 	}
 
 	if *sqliOption || *xssOption || *crawlOption {
-		core.ControlVuln(*target, *sqliOption, *xssOption, *crawlOption)
+		vuln.ControlVuln(*target, *sqliOption, *xssOption, *crawlOption)
 	}
 
-	if infoOpt.SubDomainOption || infoOpt.SensitiveDirectoryOption || infoOpt.TitleOption {
-		core.ControlInfo(*target, infoOpt)
+	if infoOpt.IsSubDomain || infoOpt.IsDirectory || infoOpt.IsTitle {
+		info.ControlInfo(*target, infoOpt)
 	}
 }

@@ -6,17 +6,11 @@ import (
 	"time"
 )
 
-type SubDomainType struct {
-	Domain string
-	Cname  string
-	IP     []string
-	Title  string
-}
 
 var (
-	dnsServer = []string{"119.29.29.29", "223.6.6.6", "223.5.5.5", "119.28.28.28"}
-	blackList map[string]string
-	title     = make(chan SubDomainType, 10)
+	dnsServer        = []string{"119.29.29.29", "223.6.6.6", "223.5.5.5", "119.28.28.28"}
+	blackList        map[string]string
+	thirdSubDomainChannel = make(chan TypeInfo, 20)
 	//totalDict  int
 )
 
@@ -33,32 +27,13 @@ func QueryErrorDomainIP(baseDomain string) bool {
 	return false
 }
 
-func mergeDict(dictLocation string, searchDomain []string, domainList chan string, baseDomain string) {
-	dict := utils.LoadDict(dictLocation)
-	dict = append(dict, searchDomain...)
-	dict = utils.RemoveDuplicates(dict)
-
-	//totalDict = len(dict)
-	go func() {
-		for _, prefix := range dict {
-			domainList <- prefix + "." + baseDomain
-		}
-	}()
-}
-
-func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
-	returnResults := allResults
+func thirdSubDomain(subDomainChannel chan TypeInfo) {
 	dict := utils.LoadDict("./dict/sub_domain.txt")
-
-	resultsChannel := make(chan SubDomainType)
 	thirdDomainList := make(chan string, 20)
 
-	//fmt.Println(index, len(allResults))
-	//utils.ProgressBar(index, len(allResults))
+	// TODO progress bar
 	go func() {
-		for _, result := range allResults {
-			//fmt.Printf("\r# 域名剩余数量 %d / %d", index+1, len(allResults))
-
+		for result := range subDomainChannel {
 			if QueryErrorDomainIP(result.Domain) {
 				continue
 			}
@@ -68,53 +43,47 @@ func thirdSubDomain(allResults []SubDomainType) []SubDomainType {
 		}
 	}()
 
-	DNSQuery(thirdDomainList, blackList, resultsChannel)
+	DNSQuery(thirdDomainList, blackList, thirdSubDomainChannel)
 
-	for thirdResult := range resultsChannel {
-		returnResults = append(returnResults, thirdResult)
-		//fmt.Println("\r", thirdResult.Domain, thirdResult.Cname, thirdResult.IP)
-	}
-
-	return returnResults
 }
 
-func subDomainBrute(baseDomain string, domainList chan string, titleOption bool) []SubDomainType {
-	var allResults []SubDomainType
-	resultsChannel := make(chan SubDomainType)
-
-	QueryErrorDomainIP(baseDomain)
-	DNSQuery(domainList, blackList, resultsChannel)
-
-	for result := range resultsChannel {
-		allResults = append(allResults, result)
-		if !titleOption {
-			fmt.Println(result.Domain, result.Cname, result.IP)
-		}
-
-
-	}
-	return allResults
-}
-
-func SubDomain(domain string, dictLocation string, thirdOption bool, titleOption bool, portOption bool) []SubDomainType {
-	baseDomain := domain
+func SubDomain(domain string, dictLocation string, thirdOption bool) []TypeInfo {
+	var SubDomain  []TypeInfo
 	domainList := make(chan string)
+	subDomainChannel := make(chan TypeInfo, 20)
 
 	t := time.Now()
-	searchDomain := searchSubDomain(baseDomain)
-	searchDomain = append(searchDomain, apiSubDomain(baseDomain)...)
-	fmt.Println("search 耗时: ", time.Since(t))
+	//searchDomain := []string{}
+	//searchDomain = append(searchDomain, searchSubDomain(domain)...)
+	//searchDomain = append(searchDomain, apiSubDomain(domain)...)
+	//fmt.Println("search 耗时: ", time.Since(t))
+	//
 
-	t = time.Now()
-	mergeDict(dictLocation, searchDomain, domainList, baseDomain)
-	allResults := subDomainBrute(baseDomain, domainList, titleOption)
-	fmt.Println("brute 耗时: ", time.Since(t), "子域名数量:", len(allResults))
+	dict := utils.LoadDict(dictLocation)
+	go func() {
+		for _, prefix := range dict {
+			domainList <- prefix + "." + domain
+		}
+	}()
+	QueryErrorDomainIP(domain)
+	go DNSQuery(domainList, blackList, subDomainChannel)
 
 	if thirdOption {
-		t = time.Now()
-		allResults = thirdSubDomain(allResults)
-		fmt.Println("\nthird 耗时: ", time.Since(t))
+		go thirdSubDomain(subDomainChannel)
+		for result := range thirdSubDomainChannel {
+			domainResults <- result
+			//SubDomain = append(SubDomain, result)
+		}
+		close(domainResults)
+		fmt.Println("brute 耗时: ", time.Since(t))
+	}else{
+		for result := range subDomainChannel {
+			domainResults <- result
+			//SubDomain = append(SubDomain, result)
+		}
+		close(domainResults)
+		fmt.Println("brute 耗时: ", time.Since(t))
 	}
 
-	return allResults
+	return SubDomain
 }

@@ -13,7 +13,7 @@ var (
 )
 
 
-func DNSQuery(domainList chan string, blackList map[string]string, results chan SubDomainType) {
+func DNSQuery(domainList chan string, blackList map[string]string, results chan TypeInfo) {
 	var err error
 	stop := make(chan int)
 	resetTimeOut = make(chan int, 5)
@@ -45,11 +45,11 @@ func sendQuery(domainList chan string, stop chan int) {
 	}
 }
 
-func receiveQuery(blackList map[string]string, results chan SubDomainType, stop chan int) {
+func receiveQuery(blackList map[string]string, results chan TypeInfo, stop chan int) {
 	var (
 		msg  *dns.Msg
 		err  error
-		temp SubDomainType
+		temp TypeInfo
 	)
 
 	for {
