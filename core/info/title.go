@@ -2,6 +2,7 @@ package info
 
 import (
 	"../../utils"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 )
 
 func RunGetTitle() {
+	t := time.Now()
 	wg := sync.WaitGroup{}
 	for i := 0; i < 20; i++ {
 		go func() {
@@ -21,6 +23,7 @@ func RunGetTitle() {
 	}
 	wg.Wait()
 	close(titleResults)
+	fmt.Println("title 耗时: ", time.Since(t))
 }
 
 func getTitle() {
@@ -31,7 +34,7 @@ func getTitle() {
 	}
 	for {
 		select {
-		case result := <-domainResults:
+		case result := <-cClassResults:
 			if result.Domain == "" {
 				return
 			}
@@ -50,7 +53,8 @@ func getTitle() {
 				continue
 			}
 			bodyString := utils.DetectContentCharset(body, resp.Header.Get("content-type"))
-			resp.Body.Close()
+			err = resp.Body.Close()
+			utils.CheckError(err)
 
 			domainTitle := pattern.FindAllStringSubmatch(bodyString, -1)
 			if len(domainTitle) == 0 {

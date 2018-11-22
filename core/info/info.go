@@ -1,16 +1,16 @@
 package info
 
-import (
-	"fmt"
-)
+import "time"
 
 type OptionInfo struct {
 	DictLocation string
+	IsCClass     bool
 	IsSubDomain  bool
 	IsTitle      bool
 	IsThird      bool
 	IsPort       bool
 	IsDirectory  bool
+	IsCleanMode  bool
 }
 
 type TypeInfo struct {
@@ -18,34 +18,39 @@ type TypeInfo struct {
 	Cname  string
 	IP     []string
 	Title  string
-	Port   []int
+	Port   []string
 }
 
 var (
 	domainResults = make(chan TypeInfo, 20)
+	cClassResults = make(chan TypeInfo, 20)
 	titleResults  = make(chan TypeInfo, 20)
 	portResults   = make(chan TypeInfo, 20)
 )
 
 func ControlInfo(domain string, optionInfo OptionInfo) {
 
-	// 增加新的方法注意事项 ！！！
-	// if optionInfo.IsTitle {
-	//		go func() 之中不需要关闭其他channel
-	// }
-
 	if optionInfo.IsSubDomain {
-		//subDomain := SubDomain(domain, optionInfo.DictLocation, optionInfo.IsThird)
 		go SubDomain(domain, optionInfo.DictLocation, optionInfo.IsThird)
-		// 标题获取
-		if optionInfo.IsTitle {
-			//t := time.Now()
-			//allResults = RunGetTitle(subDomain)
-			go RunGetTitle()
-			//fmt.Println("Title: ", time.Since(t))
+		time.Sleep(1 * time.Second)
+		if optionInfo.IsCClass {
+			go CountCClassIP()
+			time.Sleep(1 * time.Second)
 		} else {
 			go func() {
 				for result := range domainResults {
+					cClassResults <- result
+				}
+				close(cClassResults)
+			}()
+		}
+
+		if optionInfo.IsTitle {
+			go RunGetTitle()
+			time.Sleep(1 * time.Second)
+		} else {
+			go func() {
+				for result := range cClassResults {
 					titleResults <- result
 				}
 				close(titleResults)
@@ -53,11 +58,8 @@ func ControlInfo(domain string, optionInfo OptionInfo) {
 		}
 
 		if optionInfo.IsPort {
-			//t := time.Now()
-			// read from titleChannel
-			fmt.Println("thIs Is Port")
-			//allResults = info.RunGetTitle(allResults)
-			//fmt.Println("Port: ", time.Since(t))
+			go RunGetPort()
+			time.Sleep(1 * time.Second)
 		} else {
 			go func() {
 				for result := range titleResults {
@@ -68,8 +70,7 @@ func ControlInfo(domain string, optionInfo OptionInfo) {
 		}
 
 		// 输出命令行
-		Output()
-		// Output(allResults)
+		Output(optionInfo.IsCleanMode)
 
 		// 保存csv
 		//SaveFile("./results/"+domain+".csv", allResults)
